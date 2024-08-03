@@ -71,11 +71,11 @@ def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_num
     print(f'Shape of val_inputs before encoding: {val_inputs.shape}')
     
     # Encode the training data and get the feature columns
-    train_inputs, encoder = one_hot_encode_features(train_inputs, categorical_cols)
+    train_inputs, encoder = encode_categorical_features(train_inputs, categorical_cols)
     feature_columns = list(train_inputs.columns)
     
     # Encode the validation data using the same columns
-    val_inputs, _ = one_hot_encode_features(val_inputs, categorical_cols, encoder, columns=feature_columns)
+    val_inputs, _ = encode_categorical_features(val_inputs, categorical_cols, encoder, columns=feature_columns)
     
     print(f'Shape of train_inputs after encoding: {train_inputs.shape}')
     print(f'Shape of val_inputs after encoding: {val_inputs.shape}')
