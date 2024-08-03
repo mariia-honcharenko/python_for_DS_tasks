@@ -31,20 +31,20 @@ def scale_numeric_features(df: pd.DataFrame, numeric_cols: List[str], scaler: Mi
         df[numeric_cols] = scaler.transform(df[numeric_cols])
     return df, scaler
 
-def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encoder: OneHotEncoder = None, columns: List[str] = None) -> Tuple[pd.DataFrame, OneHotEncoder]:
-    if encoder is None:
-        encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-        encoded_df = pd.DataFrame(encoder.fit_transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
-    else:
-        encoded_df = pd.DataFrame(encoder.transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
+def encode_categorical_features(data: Dict[str, Any], categorical_cols: List[str]) -> None:
+    """
+    One-hot encode categorical features.
     
-    df = pd.concat([df.drop(columns=categorical_cols), encoded_df], axis=1)
+    Args:
+        data (Dict[str, Any]): Dictionary containing inputs and targets for train and val sets.
+        categorical_cols (List[str]): List of categorical columns.
+    """
+    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore').fit(data['train']['inputs'][categorical_cols])
+    encoded_cols = list(encoder.get_feature_names_out(categorical_cols))
     
-    # Ensure the columns match the strict list of features
-    if columns is not None:
-        df = df.reindex(columns=columns, fill_value=0)
-    
-    return df, encoder
+    for split in ['train', 'val']:
+        encoded = encoder.transform(data[split]['inputs'][categorical_cols])
+        data[split]['inputs'] = pd.concat([data[split]['inputs'].drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoded_cols, index=data[split]['inputs'].index)], axis=1)
 
 def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, List[str], MinMaxScaler, OneHotEncoder]:
     raw_df = drop_na(raw_df, [target_col])
