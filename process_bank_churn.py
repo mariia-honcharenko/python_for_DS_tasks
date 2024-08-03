@@ -142,6 +142,9 @@ def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: Min
     numeric_cols = new_df.select_dtypes(include=np.number).columns.tolist()
     categorical_cols = new_df.select_dtypes(include='object').columns.tolist()
     
+    print("Numeric columns in new_df:", numeric_cols)
+    print("Categorical columns in new_df:", categorical_cols)
+    
     if scaler:
         new_df[numeric_cols] = scaler.transform(new_df[numeric_cols])
     
@@ -149,6 +152,7 @@ def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: Min
         encoded = encoder.transform(new_df[categorical_cols])
         new_df = pd.concat([new_df.drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoder.get_feature_names_out(categorical_cols), index=new_df.index)], axis=1)
     
+    print("Columns in new_df after processing:", new_df.columns)
     new_df = new_df[input_cols]
     
     return new_df
