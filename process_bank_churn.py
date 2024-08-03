@@ -52,22 +52,15 @@ def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_num
     df_dict = {'train': train_df, 'val': val_df}
     data = create_inputs_targets(df_dict, input_cols, target_col)
     
-    print(f'Shape of X_train before processing: {data["X_train"].shape}')
-    print(f'Shape of X_val before processing: {data["X_val"].shape}')
-    
+        
     numeric_cols = data['X_train'].select_dtypes(include=np.number).columns.tolist()
     categorical_cols = data['X_train'].select_dtypes(include='object').columns.tolist()
     
     if scaler_numeric:
         scale_numeric_features(data, numeric_cols)
-    
-    print(f'Shape of X_train before encoding: {data["X_train"].shape}')
-    print(f'Shape of X_val before encoding: {data["X_val"].shape}')
-    
+        
     encode_categorical_features(data, categorical_cols)
-    
-    print(f'Shape of X_train after encoding: {data["X_train"].shape}')
-    print(f'Shape of X_val after encoding: {data["X_val"].shape}')
+      
     
     return data['X_train'], data['train_targets'], data['X_val'], data['val_targets'], data['input_cols'], data['scaler'], data['encoder']
 
@@ -90,9 +83,7 @@ def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: Min
     numeric_cols = new_df.select_dtypes(include=np.number).columns.tolist()
     categorical_cols = new_df.select_dtypes(include='object').columns.tolist()
     
-    print("Numeric columns in new_df:", numeric_cols)
-    print("Categorical columns in new_df:", categorical_cols)
-    
+      
     if scaler:
         new_df[numeric_cols] = scaler.transform(new_df[numeric_cols])
     
@@ -100,7 +91,6 @@ def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: Min
         encoded = encoder.transform(new_df[categorical_cols])
         new_df = pd.concat([new_df.drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoder.get_feature_names_out(categorical_cols), index=new_df.index)], axis=1)
     
-    print("Columns in new_df after processing:", new_df.columns)
     new_df = new_df[input_cols]
     
     return new_df
