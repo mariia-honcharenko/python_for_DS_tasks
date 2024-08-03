@@ -31,7 +31,7 @@ def scale_numeric_features(df: pd.DataFrame, numeric_cols: List[str], scaler: Mi
         df[numeric_cols] = scaler.transform(df[numeric_cols])
     return df, scaler
 
-def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encoder: OneHotEncoder = None) -> Tuple[pd.DataFrame, OneHotEncoder]:
+def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encoder: OneHotEncoder = None, columns: List[str] = None) -> Tuple[pd.DataFrame, OneHotEncoder]:
     if encoder is None:
         encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
         encoded_df = pd.DataFrame(encoder.fit_transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
@@ -39,6 +39,11 @@ def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encod
         encoded_df = pd.DataFrame(encoder.transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
     
     df = pd.concat([df.drop(columns=categorical_cols), encoded_df], axis=1)
+    
+    # Ensure the columns match the strict list of features
+    if columns is not None:
+        df = df.reindex(columns=columns, fill_value=0)
+    
     return df, encoder
 
 def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, List[str], MinMaxScaler, OneHotEncoder]:
@@ -65,15 +70,17 @@ def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_num
     print(f'Shape of train_inputs before encoding: {train_inputs.shape}')
     print(f'Shape of val_inputs before encoding: {val_inputs.shape}')
     
+    # Encode the training data and get the feature columns
     train_inputs, encoder = one_hot_encode_features(train_inputs, categorical_cols)
-    val_inputs, _ = one_hot_encode_features(val_inputs, categorical_cols, encoder)
+    feature_columns = list(train_inputs.columns)
+    
+    # Encode the validation data using the same columns
+    val_inputs, _ = one_hot_encode_features(val_inputs, categorical_cols, encoder, columns=feature_columns)
     
     print(f'Shape of train_inputs after encoding: {train_inputs.shape}')
     print(f'Shape of val_inputs after encoding: {val_inputs.shape}')
     
-    input_cols = list(train_inputs.columns)
-    
-    return train_inputs, train_targets, val_inputs, val_targets, input_cols, scaler, encoder
+    return train_inputs, train_targets, val_inputs, val_targets, feature_columns, scaler, encoder
     
 
 
