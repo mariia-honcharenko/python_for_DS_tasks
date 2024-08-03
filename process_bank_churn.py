@@ -66,13 +66,6 @@ def scale_numeric_features(data: Dict[str, Any], numeric_cols: List[str]) -> Non
     data['scaler'] = scaler
 
 def encode_categorical_features(data: Dict[str, Any], categorical_cols: List[str]) -> None:
-    """
-    One-hot encode categorical features.
-    
-    Args:
-        data (Dict[str, Any]): Dictionary containing inputs and targets for train and val sets.
-        categorical_cols (List[str]): List of categorical columns.
-    """
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore').fit(data['X_train'][categorical_cols])
     encoded_cols = list(encoder.get_feature_names_out(categorical_cols))
     
@@ -80,6 +73,7 @@ def encode_categorical_features(data: Dict[str, Any], categorical_cols: List[str
         encoded = encoder.transform(data[f'X_{split}'][categorical_cols])
         data[f'X_{split}'] = pd.concat([data[f'X_{split}'].drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoded_cols, index=data[f'X_{split}'].index)], axis=1)
     data['encoder'] = encoder
+    data['input_cols'] = [col for col in data['X_train'].columns]
 
 def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, List[str], MinMaxScaler, OneHotEncoder]:
     """
