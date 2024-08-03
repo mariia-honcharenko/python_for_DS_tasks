@@ -43,24 +43,35 @@ def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encod
 def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, List[str], MinMaxScaler, OneHotEncoder]:
     raw_df = drop_na(raw_df, [target_col])
     raw_df = raw_df.drop(columns=['Surname', 'CustomerId'])
+    
     train_df, val_df = split_data(raw_df)
+    
     train_inputs, train_targets = separate_inputs_targets(train_df, target_col)
     val_inputs, val_targets = separate_inputs_targets(val_df, target_col)
+    
     print(f'Shape of train_inputs before processing: {train_inputs.shape}')
     print(f'Shape of val_inputs before processing: {val_inputs.shape}')
+    
     numeric_cols = train_inputs.select_dtypes(include=np.number).columns.tolist()
     categorical_cols = train_inputs.select_dtypes(include='object').columns.tolist()
+    
     if scaler_numeric:
         train_inputs, scaler = scale_numeric_features(train_inputs, numeric_cols)
         val_inputs, _ = scale_numeric_features(val_inputs, numeric_cols, scaler)
     else:
         scaler = None
+    
+    print(f'Shape of train_inputs before encoding: {train_inputs.shape}')
+    print(f'Shape of val_inputs before encoding: {val_inputs.shape}')
+    
     train_inputs, encoder = one_hot_encode_features(train_inputs, categorical_cols)
     val_inputs, _ = one_hot_encode_features(val_inputs, categorical_cols, encoder)
-    print(f'Shape of train_inputs after processing: {train_inputs.shape}')
-    print(f'Shape of val_inputs after processing: {val_inputs.shape}')
+    
+    print(f'Shape of train_inputs after encoding: {train_inputs.shape}')
+    print(f'Shape of val_inputs after encoding: {val_inputs.shape}')
+    
     input_cols = list(train_inputs.columns)
-    return train_inputs, train_targets, val_inputs, val_targets, input_cols, scaler, encoder
+    
 
 
 def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: MinMaxScaler, encoder: OneHotEncoder) -> pd.DataFrame:
