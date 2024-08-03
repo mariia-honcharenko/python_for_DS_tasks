@@ -37,6 +37,7 @@ def one_hot_encode_features(df: pd.DataFrame, categorical_cols: List[str], encod
         encoded_df = pd.DataFrame(encoder.fit_transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
     else:
         encoded_df = pd.DataFrame(encoder.transform(df[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols))
+    
     df = pd.concat([df.drop(columns=categorical_cols), encoded_df], axis=1)
     return df, encoder
 
@@ -71,6 +72,8 @@ def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_num
     print(f'Shape of val_inputs after encoding: {val_inputs.shape}')
     
     input_cols = list(train_inputs.columns)
+    
+    return train_inputs, train_targets, val_inputs, val_targets, input_cols, scaler, encoder
     
 
 
