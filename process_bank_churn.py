@@ -1,97 +1,180 @@
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import roc_auc_score
-from typing import Tuple, List, Dict, Any
-import matplotlib.pyplot as plt
+from typing import Tuple, Dict, Any
 
-def drop_na_values(raw_df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    return raw_df.dropna(subset=columns)
 
-def split_data(df: pd.DataFrame, split_ratio: float = 0.8) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    train_size = int(len(df) * split_ratio)
-    train_df = df.iloc[:train_size]
-    val_df = df.iloc[train_size:]
-    print(f'Shape of train_df: {train_df.shape}')
-    print(f'Shape of val_df: {val_df.shape}')
-    return train_df, val_df
-
-def create_inputs_targets(df_dict: Dict[str, pd.DataFrame], input_cols: List[str], target_col: str) -> Dict[str, Any]:
-    data = {}
-    for split in df_dict:
-        data[f'X_{split}'] = df_dict[split][input_cols].copy()
-        data[f'{split}_targets'] = df_dict[split][target_col].copy()
-    return data
-
-def scale_numeric_features(data: Dict[str, Any], numeric_cols: List[str]) -> None:
-    scaler = MinMaxScaler()
-    data['X_train'][numeric_cols] = scaler.fit_transform(data['X_train'][numeric_cols])
-    data['X_val'][numeric_cols] = scaler.transform(data['X_val'][numeric_cols])
-    data['scaler'] = scaler
-
-def encode_categorical_features(data: Dict[str, Any], categorical_cols: List[str]) -> None:
-    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore').fit(data['X_train'][categorical_cols])
-    encoded_cols = list(encoder.get_feature_names_out(categorical_cols))
-    
-    for split in ['train', 'val']:
-        encoded = encoder.transform(data[f'X_{split}'][categorical_cols])
-        data[f'X_{split}'] = pd.concat([data[f'X_{split}'].drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoded_cols, index=data[f'X_{split}'].index)], axis=1)
-    data['encoder'] = encoder
-    data['input_cols'] = [col for col in data['X_train'].columns]
-
-def preprocess_data(raw_df: pd.DataFrame, target_col: str = 'Exited', scaler_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, List[str], MinMaxScaler, OneHotEncoder]:
-    raw_df = drop_na_values(raw_df, [target_col])
-    raw_df = raw_df.drop(columns=['Surname', 'CustomerId'])
-    
-    train_df, val_df = split_data(raw_df)
-    
-    input_cols = list(raw_df.columns)
-    input_cols.remove(target_col)
-    
-    df_dict = {'train': train_df, 'val': val_df}
-    data = create_inputs_targets(df_dict, input_cols, target_col)
-    
-        
-    numeric_cols = data['X_train'].select_dtypes(include=np.number).columns.tolist()
-    categorical_cols = data['X_train'].select_dtypes(include='object').columns.tolist()
-    
-    if scaler_numeric:
-        scale_numeric_features(data, numeric_cols)
-        
-    encode_categorical_features(data, categorical_cols)
-      
-    
-    return data['X_train'], data['train_targets'], data['X_val'], data['val_targets'], data['input_cols'], data['scaler'], data['encoder']
-
-def preprocess_new_data(new_df: pd.DataFrame, input_cols: List[str], scaler: MinMaxScaler, encoder: OneHotEncoder) -> pd.DataFrame:
+def split_train_val(df: pd.DataFrame, target_col: str, test_size: float = 0.2, random_state: int = 42) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Preprocess new data for prediction or evaluation.
+    Split the dataframe into training and validation sets.
 
     Args:
-        new_df (pd.DataFrame): The new DataFrame to process.
-        input_cols (List[str]): List of input columns.
-        scaler (MinMaxScaler): Pre-fitted MinMaxScaler.
-        encoder (OneHotEncoder): Pre-fitted OneHotEncoder.
+        df (pd.DataFrame): The raw dataframe.
+        target_col (str): The target column for stratification.
+        test_size (float): The proportion of the dataset to include in the validation split.
+        random_state (int): Random state for reproducibility.
 
     Returns:
-        pd.DataFrame: Processed DataFrame ready for prediction or evaluation.
+        Tuple[pd.DataFrame, pd.DataFrame]: Training and validation dataframes.
     """
-    new_df = new_df.drop(columns=['Surname', 'CustomerId'])
-    
+    train_df, val_df = train_test_split(df, test_size=test_size, random_state=random_state, stratify=df[target_col])
+    return train_df, val_df
+
+
+def separate_inputs_targets(df: pd.DataFrame, input_cols: list, target_col: str) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    Separate inputs and targets from the dataframe.
+
+    Args:
+        df (pd.DataFrame): The dataframe.
+        input_cols (list): List of input columns.
+        target_col (str): Target column.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.Series]: DataFrame of inputs and Series of targets.
+    """
+    inputs = df[input_cols].copy()
+    targets = df[target_col].copy()
+    return inputs, targets
+
+
+def fit_scaler(train_inputs: pd.DataFrame, numeric_cols: list) -> MinMaxScaler:
+    """
+    Fit a MinMaxScaler to the training inputs.
+
+    Args:
+        train_inputs (pd.DataFrame): Training inputs.
+        numeric_cols (list): List of numerical columns.
+
+    Returns:
+        MinMaxScaler: Fitted scaler.
+    """
+    scaler = MinMaxScaler().fit(train_inputs[numeric_cols])
+    return scaler
+
+
+def scale_numeric_features(scaler: MinMaxScaler, inputs: pd.DataFrame, numeric_cols: list) -> None:
+    """
+    Scale numeric features using the provided scaler.
+
+    Args:
+        scaler (MinMaxScaler): Fitted scaler.
+        inputs (pd.DataFrame): Inputs to be scaled.
+        numeric_cols (list): List of numerical columns.
+    """
+    inputs[numeric_cols] = scaler.transform(inputs[numeric_cols])
+
+
+def fit_encoder(train_inputs: pd.DataFrame, categorical_cols: list) -> OneHotEncoder:
+    """
+    Fit a OneHotEncoder to the categorical columns in the training inputs.
+
+    Args:
+        train_inputs (pd.DataFrame): Training inputs.
+        categorical_cols (list): List of categorical columns.
+
+    Returns:
+        OneHotEncoder: Fitted encoder.
+    """
+    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore').fit(train_inputs[categorical_cols])
+    return encoder
+
+
+def encode_categorical_features(encoder: OneHotEncoder, inputs: pd.DataFrame, categorical_cols: list) -> pd.DataFrame:
+    """
+    Encode categorical features using the provided encoder.
+
+    Args:
+        encoder (OneHotEncoder): Fitted encoder.
+        inputs (pd.DataFrame): Inputs to be encoded.
+        categorical_cols (list): List of categorical columns.
+
+    Returns:
+        pd.DataFrame: DataFrame with encoded categorical features.
+    """
+    encoded = encoder.transform(inputs[categorical_cols])
+    encoded_df = pd.DataFrame(encoded, columns=encoder.get_feature_names_out(categorical_cols), index=inputs.index)
+    inputs = inputs.drop(columns=categorical_cols)
+    return pd.concat([inputs, encoded_df], axis=1)
+
+
+def preprocess_data(raw_df: pd.DataFrame, scale_numeric: bool = True) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, MinMaxScaler, OneHotEncoder]:
+    """
+    Preprocess the raw dataframe.
+
+    Args:
+        raw_df (pd.DataFrame): The raw dataframe.
+        scale_numeric (bool): Option to scale numerical features.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, MinMaxScaler, OneHotEncoder]:
+            Processed training inputs, training targets, validation inputs, validation targets,
+            fitted scaler, and fitted encoder.
+    """
+    # Split data into training and validation sets
+    train_df, val_df = split_train_val(raw_df, 'Exited')
+
+    # Define input and target columns
+    input_cols = list(train_df.columns)[1:-1]
+    input_cols.remove('Surname')
+    target_col = 'Exited'
+
+    # Separate inputs and targets
+    train_inputs, train_targets = separate_inputs_targets(train_df, input_cols, target_col)
+    val_inputs, val_targets = separate_inputs_targets(val_df, input_cols, target_col)
+
     # Identify numeric and categorical columns
-    numeric_cols = new_df.select_dtypes(include=np.number).columns.tolist()
-    categorical_cols = new_df.select_dtypes(include='object').columns.tolist()
-    
-      
-    if scaler:
-        new_df[numeric_cols] = scaler.transform(new_df[numeric_cols])
-    
-    if encoder:
-        encoded = encoder.transform(new_df[categorical_cols])
-        new_df = pd.concat([new_df.drop(columns=categorical_cols), pd.DataFrame(encoded, columns=encoder.get_feature_names_out(categorical_cols), index=new_df.index)], axis=1)
-    
-    new_df = new_df[input_cols]
-    
-    return new_df
+    numeric_cols = train_inputs.select_dtypes(include=np.number).columns.tolist()
+    categorical_cols = train_inputs.select_dtypes(include='object').columns.tolist()
+
+    # Scale numeric features if required
+    scaler = None
+    if scale_numeric:
+        scaler = fit_scaler(train_inputs, numeric_cols)
+        scale_numeric_features(scaler, train_inputs, numeric_cols)
+        scale_numeric_features(scaler, val_inputs, numeric_cols)
+
+    # Encode categorical features
+    encoder = fit_encoder(train_inputs, categorical_cols)
+    train_inputs = encode_categorical_features(encoder, train_inputs, categorical_cols)
+    val_inputs = encode_categorical_features(encoder, val_inputs, categorical_cols)
+
+    # Extract X_train, X_val
+    X_train = train_inputs
+    X_val = val_inputs
+
+    return X_train, train_targets, X_val, val_targets, input_cols, scaler, encoder
+
+
+def preprocess_new_data(new_df: pd.DataFrame, input_cols: list, scaler: MinMaxScaler, encoder: OneHotEncoder, scale_numeric: bool = True) -> pd.DataFrame:
+    """
+    Preprocess new data using the provided scaler and encoder.
+
+    Args:
+        new_df (pd.DataFrame): The new dataframe.
+        input_cols (list): List of input columns.
+        scaler (MinMaxScaler): Fitted scaler.
+        encoder (OneHotEncoder): Fitted encoder.
+        scale_numeric (bool): Option to scale numerical features.
+
+    Returns:
+        pd.DataFrame: Processed inputs for the new data.
+    """
+    inputs = new_df[input_cols].copy()
+
+    # Identify numeric and categorical columns
+    numeric_cols = inputs.select_dtypes(include=np.number).columns.tolist()
+    categorical_cols = inputs.select_dtypes(include='object').columns.tolist()
+
+    # Scale numeric features if required
+    if scale_numeric:
+        scale_numeric_features(scaler, inputs, numeric_cols)
+
+    # Encode categorical features
+    inputs = encode_categorical_features(encoder, inputs, categorical_cols)
+
+    return inputs
+
+
 
