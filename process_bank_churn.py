@@ -93,7 +93,7 @@ def encode_categorical_features(encoder: OneHotEncoder, inputs: pd.DataFrame, ca
     Returns:
         pd.DataFrame: DataFrame with encoded categorical features.
     """
-    encoded = encoder.transform(inputs[categorical_cols])
+    encoded = encoder.transform(inputs[categorical_cols]).toarray() 
     encoded_df = pd.DataFrame(encoded, columns=encoder.get_feature_names_out(categorical_cols), index=inputs.index)
     inputs = inputs.drop(columns=categorical_cols)
     return pd.concat([inputs, encoded_df], axis=1)
