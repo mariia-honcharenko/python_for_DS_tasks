@@ -77,7 +77,7 @@ def fit_encoder(train_inputs: pd.DataFrame, categorical_cols: list) -> OneHotEnc
     Returns:
         OneHotEncoder: Fitted encoder.
     """
-    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore').fit(train_inputs[categorical_cols])
+    encoder = OneHotEncoder(handle_unknown='ignore').fit(train_inputs[categorical_cols])
     return encoder
 
 
