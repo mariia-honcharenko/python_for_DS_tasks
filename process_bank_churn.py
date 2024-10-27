@@ -77,7 +77,7 @@ def fit_encoder(train_inputs: pd.DataFrame, categorical_cols: list) -> OneHotEnc
     Returns:
         OneHotEncoder: Fitted encoder.
     """
-    encoder = OneHotEncoder(handle_unknown='ignore').fit(train_inputs[categorical_cols])
+    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore').fit(train_inputs[categorical_cols])
     return encoder
 
 
@@ -175,6 +175,3 @@ def preprocess_new_data(new_df: pd.DataFrame, input_cols: list, scaler: MinMaxSc
     inputs = encode_categorical_features(encoder, inputs, categorical_cols)
 
     return inputs
-
-
-
